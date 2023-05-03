@@ -1,6 +1,7 @@
 package ir.moke.server;
 
-import ir.moke.SharedConcept;
+import ir.moke.h5proto.RPC;
+import ir.moke.h5proto.SharedConcept;
 import ir.moke.h5proto.algorithm.AES;
 import ir.moke.h5proto.algorithm.ECDH;
 import ir.moke.h5proto.utils.Base64Utils;
@@ -45,11 +46,12 @@ public class SocketThread extends Thread {
             while ((line = bufferedReader.readLine()) != null) {
                 if (line.equals("quit")) break;
 
-                String cmd = line.split(":")[0];
+                String rpcCode = line.split(":")[0];
                 String payload_b64 = line.split(":")[1];
                 byte[] payload = Base64Utils.decodeToBytes(payload_b64);
-                switch (cmd) {
-                    case "pub" -> {
+                RPC rpc = RPC.getValue(rpcCode);
+                switch (rpc) {
+                    case PUBLIC_KEY -> {
                         System.out.println("Received client public key: " + payload_b64);
                         PublicKey clientPublicKey = ecdh.convertByteArrayToPublicKey(payload);
 
@@ -58,20 +60,28 @@ public class SocketThread extends Thread {
                         PublicKey serverPublicKey = ecdh.getPublicKey();
 
                         /* Server send public key to client */
-                        String message = SharedConcept.encapsulateMessage("pub", serverPublicKey.getEncoded(), null);
+                        String message = SharedConcept.encapsulateMessage(RPC.PUBLIC_KEY, serverPublicKey.getEncoded(), null);
                         send(message);
 
                         /* generated shared secret */
                         this.sharedSecret = ecdh.getSharedSecret();
+
+                        /* Send cell phone number (ACKNOWLEDGE) */
+                        message = SharedConcept.encapsulateMessage(RPC.AUTH_CELLPHONE_NUMBER, null, null);
+                        send(message);
                     }
-                    case "cn" -> {
+                    case AUTH_CELLPHONE_NUMBER -> {
                         /* mobile phone number */
                         String cellPhoneNumber = new String(payload);
 
                         /* Send salt [with sms] to client */
                         System.out.printf("Send Activation key %s to %s%n", salt, cellPhoneNumber);
+
+                        /* Send cell phone number (ACKNOWLEDGE) */
+                        String message = SharedConcept.encapsulateMessage(RPC.ACTIVATION_KEY, null, null);
+                        send(message);
                     }
-                    case "msg" -> {
+                    case MESSAGE_TEXT -> {
                         System.out.println("IV: " + line.split(":")[2]);
                         System.out.println("Payload: " + payload_b64);
                         byte[] iv_bytes = Base64Utils.decodeToBytes(line.split(":")[2]);
