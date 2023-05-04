@@ -21,7 +21,6 @@ public class SocketThread extends Thread {
     private InputStream is;
     private final String salt = StringUtils.generateSalt();
     private final ECDH ecdh = new ECDH();
-
     private byte[] sharedSecret;
 
     public SocketThread(Socket socket) {
@@ -66,7 +65,7 @@ public class SocketThread extends Thread {
                         /* generated shared secret */
                         this.sharedSecret = ecdh.getSharedSecret();
 
-                        /* Send cell phone number (ACKNOWLEDGE) */
+                        /* tell client for send cell phone number (ACKNOWLEDGE) */
                         message = SharedConcept.encapsulateMessage(RPC.AUTH_CELLPHONE_NUMBER, null, null);
                         send(message);
                     }
